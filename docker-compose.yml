@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: mysql:8
+    container_name: test_db
+    volumes:
+      - db_test_vol:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_pass
+    networks:
+      - test
+
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: test_app
+    restart: unless-stopped
+    tty: true
+    expose:
+      - "9000"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/var/www/test-backend
+    environment:
+      DB_HOST: db
+      DB_DATABASE: test
+      DB_USERNAME: test_user
+      DB_PASSWORD: test_pass
+    networks:
+      - test
+
+  nginx:
+    image: nginx:alpine
+    container_name: test_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./:/var/www/test-backend:delegated
+    depends_on:
+      - app
+    networks:
+      - test
+
+volumes:
+  db_test_vol:
+
+networks:
+  test:
+    driver: bridge
